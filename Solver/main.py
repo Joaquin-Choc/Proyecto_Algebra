@@ -64,6 +64,34 @@ def print_matrix(matrix, name="MATRIZ", color=Colors.CYAN):
         else:
             print(color + "│" + Colors.ENDC)
 
+def print_augmented_matrix(matrix, name="MATRIZ AUMENTADA", color=Colors.CYAN):
+    """Imprime una matriz aumentada con separador"""
+    print(color + f"\n{name}:" + Colors.ENDC)
+    rows, cols = matrix.shape
+    
+    max_width = max(len(f"{val:.2f}") for row in matrix for val in row)
+    separator_pos = cols // 2
+    
+    for i, row in enumerate(matrix):
+        if i == 0:
+            print(color + "┌ " + Colors.ENDC, end="")
+        elif i == rows - 1:
+            print(color + "└ " + Colors.ENDC, end="")
+        else:
+            print(color + "│ " + Colors.ENDC, end="")
+        
+        for j, val in enumerate(row):
+            if j == separator_pos:
+                print(color + "│" + Colors.ENDC, end=" ")
+            print(f"{val:>{max_width}.2f}", end="  ")
+        
+        if i == 0:
+            print(color + "┐" + Colors.ENDC)
+        elif i == rows - 1:
+            print(color + "┘" + Colors.ENDC)
+        else:
+            print(color + "│" + Colors.ENDC)
+
 def print_vector(vector, name="VECTOR", color=Colors.GREEN):
     """Imprime un vector de forma bonita"""
     print(color + f"\n{name}:" + Colors.ENDC)
@@ -87,6 +115,156 @@ def loading_animation(text="Procesando", duration=1.5):
         i += 1
     sys.stdout.write('\r' + ' ' * 50 + '\r')
     sys.stdout.flush()
+
+def gauss_jordan_step_by_step(A, b, show_steps=True):
+    """Resuelve el sistema Ax=b usando Gauss-Jordan con pasos detallados"""
+    n = len(A)
+    # Crear matriz aumentada [A|b]
+    Ab = np.column_stack([A.copy(), b.copy()])
+    
+    if show_steps:
+        print(f"\n{Colors.BOLD}{Colors.CYAN}{'='*70}{Colors.ENDC}")
+        print(f"{Colors.BOLD}{Colors.CYAN}MÉTODO DE GAUSS-JORDAN PARA RESOLVER Ax = b{Colors.ENDC}")
+        print(f"{Colors.BOLD}{Colors.CYAN}{'='*70}{Colors.ENDC}")
+        
+        print(f"\n{Colors.GREEN}➤ Paso 1: Formar la matriz aumentada [A|b]{Colors.ENDC}")
+        print_augmented_matrix(Ab, "Matriz Aumentada [A|b]", Colors.CYAN)
+        input(f"\n{Colors.YELLOW}Presione Enter para continuar...{Colors.ENDC}")
+    
+    step = 2
+    
+    # Eliminación hacia adelante
+    for i in range(n):
+        if show_steps:
+            print(f"\n{Colors.GREEN}➤ Paso {step}: Hacer pivote en posición [{i+1},{i+1}]{Colors.ENDC}")
+            step += 1
+        
+        # Encontrar el pivote
+        max_row = i
+        for k in range(i + 1, n):
+            if abs(Ab[k][i]) > abs(Ab[max_row][i]):
+                max_row = k
+        
+        if max_row != i:
+            Ab[[i, max_row]] = Ab[[max_row, i]]
+            if show_steps:
+                print(f"   {Colors.YELLOW}↔ Intercambiando fila {i+1} con fila {max_row+1}{Colors.ENDC}")
+                print_augmented_matrix(Ab, f"Después del intercambio", Colors.YELLOW)
+        
+        # Hacer el pivote igual a 1
+        pivot = Ab[i][i]
+        if abs(pivot) < 1e-10:
+            continue
+            
+        if abs(pivot - 1.0) > 1e-10:
+            Ab[i] = Ab[i] / pivot
+            if show_steps:
+                print(f"   {Colors.CYAN}÷ Dividiendo fila {i+1} entre {pivot:.2f}{Colors.ENDC}")
+                print_augmented_matrix(Ab, f"Fila {i+1} normalizada", Colors.CYAN)
+        
+        # Eliminar elementos debajo del pivote
+        for j in range(i + 1, n):
+            if abs(Ab[j][i]) > 1e-10:
+                factor = Ab[j][i]
+                Ab[j] = Ab[j] - factor * Ab[i]
+                if show_steps:
+                    print(f"   {Colors.BLUE}− F{j+1} = F{j+1} - ({factor:.2f}) × F{i+1}{Colors.ENDC}")
+                    print_augmented_matrix(Ab, f"Eliminando elemento [{j+1},{i+1}]", Colors.BLUE)
+        
+        if show_steps and i < n-1:
+            input(f"\n{Colors.YELLOW}Presione Enter para continuar...{Colors.ENDC}")
+    
+    # Eliminación hacia atrás
+    if show_steps:
+        print(f"\n{Colors.GREEN}➤ Paso {step}: ELIMINACIÓN HACIA ATRÁS (formar identidad){Colors.ENDC}")
+        step += 1
+    
+    for i in range(n - 1, -1, -1):
+        for j in range(i - 1, -1, -1):
+            if abs(Ab[j][i]) > 1e-10:
+                factor = Ab[j][i]
+                Ab[j] = Ab[j] - factor * Ab[i]
+                if show_steps:
+                    print(f"   {Colors.BLUE}− F{j+1} = F{j+1} - ({factor:.2f}) × F{i+1}{Colors.ENDC}")
+                    print_augmented_matrix(Ab, f"Eliminando elemento [{j+1},{i+1}]", Colors.BLUE)
+    
+    if show_steps:
+        print(f"\n{Colors.GREEN}✓ ¡FORMA ESCALONADA REDUCIDA ALCANZADA!{Colors.ENDC}")
+        print_augmented_matrix(Ab, "Matriz en forma [I|x]", Colors.GREEN)
+    
+    # Extraer solución
+    x = Ab[:, -1]
+    return x
+
+def inverse_step_by_step(A, show_steps=True):
+    """Calcula la inversa de A usando Gauss-Jordan con pasos detallados"""
+    n = len(A)
+    # Crear matriz aumentada [A|I]
+    I = np.eye(n)
+    AI = np.column_stack([A.copy(), I])
+    
+    if show_steps:
+        print(f"\n{Colors.BOLD}{Colors.CYAN}{'='*70}{Colors.ENDC}")
+        print(f"{Colors.BOLD}{Colors.CYAN}CÁLCULO DE LA MATRIZ INVERSA A⁻¹{Colors.ENDC}")
+        print(f"{Colors.BOLD}{Colors.CYAN}{'='*70}{Colors.ENDC}")
+        
+        print(f"\n{Colors.GREEN}➤ Paso 1: Formar la matriz aumentada [A|I]{Colors.ENDC}")
+        print("   Donde I es la matriz identidad")
+        print_augmented_matrix(AI, "Matriz Aumentada [A|I]", Colors.CYAN)
+        input(f"\n{Colors.YELLOW}Presione Enter para continuar...{Colors.ENDC}")
+    
+    step = 2
+    
+    # Eliminación hacia adelante
+    for i in range(n):
+        if show_steps:
+            print(f"\n{Colors.GREEN}➤ Paso {step}: Hacer pivote en posición [{i+1},{i+1}]{Colors.ENDC}")
+            step += 1
+        
+        # Hacer el pivote igual a 1
+        pivot = AI[i][i]
+        if abs(pivot) < 1e-10:
+            continue
+            
+        if abs(pivot - 1.0) > 1e-10:
+            AI[i] = AI[i] / pivot
+            if show_steps:
+                print(f"   {Colors.CYAN}÷ Dividiendo fila {i+1} entre {pivot:.2f}{Colors.ENDC}")
+                print_augmented_matrix(AI, f"Fila {i+1} normalizada", Colors.CYAN)
+        
+        # Eliminar elementos debajo del pivote
+        for j in range(i + 1, n):
+            if abs(AI[j][i]) > 1e-10:
+                factor = AI[j][i]
+                AI[j] = AI[j] - factor * AI[i]
+                if show_steps:
+                    print(f"   {Colors.BLUE}− F{j+1} = F{j+1} - ({factor:.2f}) × F{i+1}{Colors.ENDC}")
+                    print_augmented_matrix(AI, f"Eliminando elemento [{j+1},{i+1}]", Colors.BLUE)
+        
+        if show_steps and i < n-1:
+            input(f"\n{Colors.YELLOW}Presione Enter para continuar...{Colors.ENDC}")
+    
+    # Eliminación hacia atrás
+    if show_steps:
+        print(f"\n{Colors.GREEN}➤ Paso {step}: ELIMINACIÓN HACIA ATRÁS{Colors.ENDC}")
+        step += 1
+    
+    for i in range(n - 1, -1, -1):
+        for j in range(i - 1, -1, -1):
+            if abs(AI[j][i]) > 1e-10:
+                factor = AI[j][i]
+                AI[j] = AI[j] - factor * AI[i]
+                if show_steps:
+                    print(f"   {Colors.BLUE}− F{j+1} = F{j+1} - ({factor:.2f}) × F{i+1}{Colors.ENDC}")
+                    print_augmented_matrix(AI, f"Eliminando elemento [{j+1},{i+1}]", Colors.BLUE)
+    
+    if show_steps:
+        print(f"\n{Colors.GREEN}✓ ¡MATRIZ INVERSA CALCULADA!{Colors.ENDC}")
+        print_augmented_matrix(AI, "Matriz en forma [I|A⁻¹]", Colors.GREEN)
+    
+    # Extraer la inversa
+    A_inv = AI[:, n:]
+    return A_inv
 
 # ============================================
 # INICIO DEL PROGRAMA
@@ -162,6 +340,11 @@ time.sleep(0.3)
 print_matrix(A, "MATRIZ A (Coeficientes de Conexión)", Colors.CYAN)
 print_vector(b, "VECTOR b (Demanda de Tráfico)", Colors.GREEN)
 
+# Preguntar si quiere ver los pasos
+print(f"\n{Colors.CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━{Colors.ENDC}")
+ver_pasos = input(f"{Colors.BOLD}{Colors.YELLOW}¿Desea ver la resolución PASO A PASO? (s/n): {Colors.ENDC}").lower()
+mostrar_pasos = (ver_pasos == 's')
+
 # ----------------------------
 # FASE 2: Análisis de la Matriz
 # ----------------------------
@@ -186,19 +369,38 @@ tolerancia = 1e-10
 # ----------------------------
 print_section("⚙️  FASE 3: RESOLUCIÓN DEL SISTEMA Ax = b", Colors.BLUE)
 
-loading_animation("Resolviendo sistema de ecuaciones", 1.5)
+if not mostrar_pasos:
+    loading_animation("Resolviendo sistema de ecuaciones", 1.5)
 
 if abs(det_A) > tolerancia:
     # Caso 1: Matriz invertible
     print(f"\n{Colors.GREEN}{Colors.BOLD}✓ MATRIZ INVERTIBLE{Colors.ENDC}")
     print(f"{Colors.GREEN}  El sistema tiene solución ÚNICA{Colors.ENDC}\n")
     
-    loading_animation("Calculando matriz inversa", 1.0)
-    
-    A_inv = np.linalg.inv(A)
-    x = np.dot(A_inv, b)
-    
-    print_matrix(A_inv, "MATRIZ INVERSA A⁻¹", Colors.YELLOW)
+    if mostrar_pasos:
+        # Mostrar cálculo de la inversa paso a paso
+        A_inv = inverse_step_by_step(A, show_steps=True)
+        
+        print(f"\n{Colors.BOLD}{Colors.GREEN}{'='*70}{Colors.ENDC}")
+        print(f"{Colors.BOLD}{Colors.GREEN}CÁLCULO DE LA SOLUCIÓN: x = A⁻¹ × b{Colors.ENDC}")
+        print(f"{Colors.BOLD}{Colors.GREEN}{'='*70}{Colors.ENDC}")
+        
+        print_matrix(A_inv, "A⁻¹ (Matriz Inversa)", Colors.YELLOW)
+        print_vector(b, "b (Vector de demanda)", Colors.CYAN)
+        
+        input(f"\n{Colors.YELLOW}Presione Enter para calcular x = A⁻¹ × b...{Colors.ENDC}")
+        
+        x = np.dot(A_inv, b)
+        
+        print(f"\n{Colors.GREEN}➤ Multiplicando A⁻¹ × b:{Colors.ENDC}")
+        for i in range(n):
+            componentes = " + ".join([f"({A_inv[i][j]:.2f})×({b[j]:.2f})" for j in range(n)])
+            print(f"   x[{i+1}] = {componentes} = {x[i]:.2f}")
+    else:
+        loading_animation("Calculando matriz inversa", 1.0)
+        A_inv = np.linalg.inv(A)
+        x = np.dot(A_inv, b)
+        print_matrix(A_inv, "MATRIZ INVERSA A⁻¹", Colors.YELLOW)
     
     print(f"\n{Colors.GREEN}{Colors.BOLD}🎯 SOLUCIÓN x (Flujo de datos óptimo):{Colors.ENDC}")
     print(f"{Colors.GREEN}{'─' * 50}{Colors.ENDC}")
@@ -241,12 +443,18 @@ else:
     print(f"      • Existe dependencia lineal entre nodos")
     print(f"      • Los nodos NO son independientes\n")
     
-    loading_animation("Calculando pseudo-inversa (mínimos cuadrados)", 1.5)
-    
-    A_pinv = np.linalg.pinv(A)
-    x_pinv = np.dot(A_pinv, b)
-    
-    print_matrix(A_pinv, "MATRIZ PSEUDO-INVERSA A⁺", Colors.YELLOW)
+    if mostrar_pasos and estado == "consistente":
+        # Intentar resolver con Gauss-Jordan aunque no tenga solución única
+        print(f"{Colors.YELLOW}Intentando resolver con Gauss-Jordan...{Colors.ENDC}")
+        try:
+            x_pinv = gauss_jordan_step_by_step(A, b, show_steps=True)
+        except:
+            x_pinv = np.dot(np.linalg.pinv(A), b)
+    else:
+        loading_animation("Calculando pseudo-inversa (mínimos cuadrados)", 1.5)
+        A_pinv = np.linalg.pinv(A)
+        x_pinv = np.dot(A_pinv, b)
+        print_matrix(A_pinv, "MATRIZ PSEUDO-INVERSA A⁺", Colors.YELLOW)
     
     print(f"\n{Colors.YELLOW}{Colors.BOLD}🎯 SOLUCIÓN APROXIMADA x:{Colors.ENDC}")
     print(f"{Colors.YELLOW}{'─' * 50}{Colors.ENDC}")
